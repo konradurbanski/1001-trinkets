@@ -1,0 +1,1650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1001TRINKETS</title>
+<style>
+  @font-face {
+    font-family: 'SimSun';
+    src: url('simsun.ttc');
+    font-weight: normal;
+    font-style: normal;
+  }
+
+  /* ============================================
+     CONFIGURATION — adjust these values easily
+     ============================================ */
+  :root {
+    --outline-thickness: 1px;
+    --outline-color-idle: rgba(0, 0, 255, 1);
+    --outline-color-hover: white;
+    --hover-transition-speed: 0s;
+    --window-border-color: rgb(255, 255, 255);
+    --window-border-width: 1px;
+    --window-bg: #000;
+    --lock-unlocked-color: rgb(255, 255, 255);
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+    font-family: 'SimSun', 'Times New Roman', serif;
+    color: #fff;
+  }
+
+  /* ============================================
+     SCENE CONTAINER — maintains 16:9 aspect
+     ============================================ */
+  .scene {
+    position: relative;
+    width: 100vw;
+    height: 56.25vw;
+    max-height: 100vh;
+    max-width: 177.78vh;
+    margin: auto;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .scene video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+
+  /* ============================================
+     SVG HOTSPOT LAYER
+     ============================================ */
+  .hotspot-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  .hotspot-layer svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  .hotspot-layer svg polygon,
+  .hotspot-layer svg circle,
+  .hotspot-layer svg ellipse,
+  .hotspot-layer svg path {
+    pointer-events: all;
+    cursor: pointer;
+    fill: transparent;
+    stroke: var(--outline-color-idle);
+    stroke-width: var(--outline-thickness);
+    stroke-miterlimit: 10;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .hotspot-layer svg:hover polygon,
+  .hotspot-layer svg.hotspot-active polygon,
+  .hotspot-layer svg:hover circle,
+  .hotspot-layer svg.hotspot-active circle,
+  .hotspot-layer svg:hover ellipse,
+  .hotspot-layer svg.hotspot-active ellipse,
+  .hotspot-layer svg:hover path,
+  .hotspot-layer svg.hotspot-active path {
+    stroke: var(--outline-color-hover);
+  }
+
+  /* Indicator-only overlays — visible but click-through */
+  .hotspot-layer.indicator-only,
+  .hotspot-layer.indicator-only svg,
+  .hotspot-layer.indicator-only svg polygon,
+  .hotspot-layer.indicator-only svg circle,
+  .hotspot-layer.indicator-only svg ellipse,
+  .hotspot-layer.indicator-only svg path {
+    pointer-events: none !important;
+    cursor: default;
+  }
+
+  /* Hover glow driven by parent window hover */
+  .info-window:hover .hotspot-layer.indicator-only svg polygon,
+  .info-window:hover .hotspot-layer.indicator-only svg circle,
+  .info-window:hover .hotspot-layer.indicator-only svg ellipse,
+  .info-window:hover .hotspot-layer.indicator-only svg path {
+    stroke: var(--outline-color-hover);
+  }
+
+  /* ============================================
+     SUB-HUB CONTENT (image + SVG overlays)
+     ============================================ */
+  .sub-hub-wrap {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
+  .sub-hub-wrap img {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .sub-hub-wrap .hotspot-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  .sub-hub-wrap .hotspot-layer svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  .sub-hub-wrap .hotspot-layer svg polygon,
+  .sub-hub-wrap .hotspot-layer svg circle,
+  .sub-hub-wrap .hotspot-layer svg ellipse,
+  .sub-hub-wrap .hotspot-layer svg path {
+    pointer-events: all;
+    cursor: pointer;
+    fill: transparent;
+    stroke: var(--outline-color-idle);
+    stroke-width: var(--outline-thickness);
+    stroke-miterlimit: 10;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .sub-hub-wrap .hotspot-layer svg:hover polygon,
+  .sub-hub-wrap .hotspot-layer svg:hover circle,
+  .sub-hub-wrap .hotspot-layer svg:hover ellipse,
+  .sub-hub-wrap .hotspot-layer svg:hover path {
+    stroke: var(--outline-color-hover);
+  }
+
+  /* ============================================
+     LOCK INTERFACES
+     ============================================ */
+  .lock-wrap {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: #000;
+    font-family: 'SimSun', 'Times New Roman', serif;
+    color: #fff;
+  }
+
+  /* The SVG fills the window and sets proportions */
+  .lock-wrap svg.lock-svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .lock-wrap svg.lock-svg path,
+  .lock-wrap svg.lock-svg polygon,
+  .lock-wrap svg.lock-svg circle {
+    fill: none;
+    stroke: var(--outline-color-idle);
+    stroke-miterlimit: 10;
+    vector-effect: non-scaling-stroke;
+  }
+
+  /* Mechanism overlay — sits on top of SVG, positioned via % */
+  .lock-mechanism {
+    position: absolute;
+    pointer-events: none;
+  }
+
+  .lock-mechanism > * {
+    pointer-events: all;
+  }
+
+  /* ---- Code lock drums ---- */
+  .drum-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .drum {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .drum-left, .drum-right {
+    background: none;
+    border: 1px solid var(--outline-color-idle);
+    color: var(--outline-color-idle);
+    font-size: 10px;
+    width: 18px;
+    height: 20px;
+    cursor: pointer;
+    padding: 0;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .drum-left:hover, .drum-right:hover {
+    border-color: var(--outline-color-hover);
+    color: var(--outline-color-hover);
+  }
+
+  .drum-val {
+    font-size: 14px;
+    width: 24px;
+    height: 20px;
+    text-align: center;
+    line-height: 20px;
+    border: 1px solid var(--outline-color-idle);
+    color: var(--outline-color-hover);
+  }
+
+  /* ---- Grid lock buttons ---- */
+  .grid-3x3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+
+  .grid-btn {
+    width: 22px;
+    height: 22px;
+    background: transparent;
+    border: 1px solid var(--outline-color-idle);
+    cursor: pointer;
+    font-family: 'SimSun', 'Times New Roman', serif;
+    font-size: 14px;
+    color: var(--outline-color-hover);
+    padding: 0;
+    line-height: 22px;
+    text-align: center;
+  }
+
+  .grid-btn:hover {
+    border-color: var(--outline-color-hover);
+  }
+
+  /* ---- Key lock keyhole ---- */
+  .keyhole-svg {
+    cursor: pointer;
+  }
+
+  .keyhole-svg circle,
+  .keyhole-svg polygon {
+    fill: none;
+    stroke: var(--outline-color-idle);
+    stroke-width: 1;
+  }
+
+  .keyhole-svg:hover circle,
+  .keyhole-svg:hover polygon {
+    stroke: var(--outline-color-hover);
+  }
+
+  /* ---- Lock console — fixed on screen ---- */
+  #lock-console {
+    position: absolute;
+    left: 20px;
+    top: 120px;
+    width: 220px;
+    max-height: 300px;
+    pointer-events: none;
+    z-index: 200;
+    display: none;
+  }
+
+  #lock-console-log {
+    overflow-y: auto;
+    max-height: 300px;
+    padding: 0;
+    font-family: 'SimSun', 'Times New Roman', serif;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+    line-height: 1.5;
+  }
+
+  /* ============================================
+     VIDEO CONTENT
+     ============================================ */
+  .video-wrap {
+    width: 100%;
+    height: 100%;
+  }
+
+  .video-wrap video {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* ============================================
+     WINDOW LAYER
+     ============================================ */
+  .window-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  /* ============================================
+     INFO WINDOWS
+     ============================================ */
+  .info-window {
+    position: absolute;
+    background: var(--window-bg);
+    border: var(--window-border-width) solid var(--window-border-color);
+    pointer-events: all;
+  }
+
+  .info-window-titlebar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 36px;
+    cursor: grab;
+    user-select: none;
+    z-index: 1;
+  }
+
+  .info-window-titlebar:active {
+    cursor: grabbing;
+  }
+
+  .info-window-close {
+    position: absolute;
+    top: 6px;
+    left: 8px;
+    background: none;
+    border: none;
+    color: blue;
+    font-size: 14px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 2px 4px;
+    font-family: 'SimSun', 'Times New Roman', serif;
+    text-decoration: underline;
+    z-index: 2;
+  }
+
+  .info-window-close:hover {
+    color: #fff;
+  }
+
+  .info-window-content {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 30px 20px 20px 20px;
+    overflow: hidden;
+  }
+
+  .info-window-content.has-iframe {
+    padding: 0;
+    align-items: flex-start;
+    justify-content: flex-start;
+    position: relative;
+  }
+
+  .info-window-content.has-iframe iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  .info-window-title {
+    font-size: 16px;
+    font-weight: 400;
+    color: #fff;
+    font-family: 'SimSun', 'Times New Roman', serif;
+  }
+
+  .info-window-content iframe {
+    border: none;
+    transform-origin: top left;
+  }
+</style>
+</head>
+<body>
+
+<!-- INTRO OVERLAY -->
+<div id="intro-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:9999;">
+  <video id="intro-idle" src="intro_idle.mp4" autoplay loop muted playsinline preload="auto" style="width:100%;height:100%;object-fit:cover;"></video>
+  <video id="intro-entering" src="intro_entering_x2.mp4" muted playsinline preload="auto" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;display:none;"></video>
+  <svg id="intro-btn" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;">
+    <rect x="850.77" y="217.72" width="464.91" height="529.82" fill="transparent" stroke="var(--outline-color-idle)" stroke-width="var(--outline-thickness)" vector-effect="non-scaling-stroke" style="transition: stroke var(--hover-transition-speed); pointer-events:all; cursor:pointer;" onmouseover="this.setAttribute('stroke','var(--outline-color-hover)')" onmouseout="this.setAttribute('stroke','var(--outline-color-idle)')"/>
+  </svg>
+</div>
+
+<div class="scene" id="scene">
+  <video id="hub-video" src="sequence 02.mp4" loop muted playsinline></video>
+
+  <div class="hotspot-layer">
+
+    <!-- back_door -->
+    <svg data-name="back_door" data-width="640" data-height="360" data-max-width="1280" data-max-height="720" data-src="locks-v1/index.html" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="1378.17 330.27 1378.17 251.2 1269.42 210.61 1263.66 212.42 1263.66 247.57 1268.2 249.38 1268.2 272.71 1275.17 276.04 1275.17 304.52 1288.2 310.58 1301.83 303.31 1378.17 330.27"/>
+    </svg>
+
+    <!-- back_panel -->
+    <svg data-name="back_panel" data-width="700" data-height="450" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="1545.94 520.69 1680.33 574.27 1716.18 557.04 1716.18 552.85 1545.94 484.63 1545.94 520.69"/>
+      <polygon points="1728.55 340.32 1712.63 334.65 1716.18 331.95 1718.84 262.58 1621.13 220.48 1584.96 238.02 1568.49 249.09 1552.84 247.74 1552.03 227.49 1510.19 225.33 1500.47 230.73 1496.96 238.02 1496.96 256.37 1483.74 251.25 1483.74 248.82 1477.8 248.55 1448.92 237.75 1412.48 252.87 1412.48 257.18 1442.98 268.52 1442.98 270.95 1451.35 271.22 1457.83 273.92 1448.65 275.81 1448.38 279.05 1440.01 280.94 1426.25 291.19 1426.25 300.64 1410.59 307.39 1410.59 311.98 1442.17 324.39 1442.17 329.79 1472.13 339.78 1479.15 336.81 1501.82 345.31 1498.31 347.07 1498.31 356.24 1487.79 360.29 1444.33 343.29 1412.48 356.78 1548.26 408.45 1548.26 426.69 1562.01 434.58 1579.56 430.63 1579.56 446.49 1548.26 434.58 1548.26 466.8 1684.62 521.53 1720.48 504.3 1720.48 500.11 1614.7 459.86 1614.7 459.86 1649.2 464.75 1655.41 457.46 1686.99 470.15 1722.88 453.95 1722.88 449.63 1701.02 440.73 1695.08 420.75 1718.57 404.83 1725.31 401.86 1725.31 395.65 1722.34 395.65 1722.34 375.68 1718.57 373.52 1718.57 365.96 1692.65 361.1 1728.55 344.91 1728.55 340.32"/>
+    </svg>
+
+    <!-- front_boxes -->
+    <svg data-name="front_boxes" data-width="600" data-height="400" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="483.32 582.96 483.32 622.54 416.56 622.54 388.91 657.82 384.14 674.51 371.38 726.72 373.65 727.23 391.41 693.88 392.76 693.81 399.9 723.34 403.86 752.42 450.07 753.25 500.92 756.14 511.03 724.63 516.18 739.91 532.44 698.46 536.83 677.17 567.58 692.64 656.02 657.68 658.69 658.64 708.73 638.39 708.73 634.19 722 628.16 722 563 708.82 556.7 707.15 540.78 716.41 549.23 719.19 547.81 705.86 531.71 679.83 516.78 660.54 499.5 634.94 509.14 599.7 521.77 594.72 533.41 586.74 526.09 521.91 540 506.28 568.65 510.6 572.97 483.32 582.96"/>
+    </svg>
+
+    <!-- front_shelf -->
+    <svg data-name="front_shelf" data-width="600" data-height="400" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="650.26 355.48 650.26 361.7 432.04 459.29 411.75 450.36 405.01 451.71 385.34 437.64 367.22 429.73 367.22 425.1 372.23 423.56 367.22 381.72 402.11 373.43 431.42 361.67 435.28 364.56 438.75 359.74 455.14 358.58 458.41 362.82 462.08 359.55 460.92 355.48 466.32 350.29 472.49 352.8 475.19 350.29 480.97 353.18 483.09 351.26 497.94 356.85 493.89 350.29 519.34 318.67 551.16 332.75 554.63 334.67 558.29 333.71 568.12 338.14 581.62 331.78 581.81 320.6 605.34 319.63 623.46 317.9 629.44 344.31 650.26 355.48"/>
+    </svg>
+
+    <!-- right_wall_panel -->
+    <svg data-name="right_wall_panel" data-width="700" data-height="500" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="795.62 660.72 851.31 637.1 879.49 649.18 879.27 625.23 1033.35 559.85 1033.35 521.85 1123.01 485.04 1193.67 515.32 1193.67 584.79 1197.25 585.99 1197.25 663.59 1220.53 652.55 1244.79 663.59 1266.21 652.59 1312.76 673.41 1312.76 717.88 1321.27 713.3 1354.62 728.02 1354.62 800.61 860.31 1030.88 722 958.88 722 902.24 748.01 890.14 748.01 853.06 736.16 847.4 736.16 839.16 796.67 812.64 795.62 660.72"/>
+    </svg>
+
+    <!-- tv_panel -->
+    <svg data-name="tv_panel" data-width="300" data-height="550" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="935.35 242.17 849.22 207.25 840.54 207.25 835.26 214.8 835.26 274.02 826.58 275.91 826.58 336.27 806.97 338.53 804.33 353.24 804.33 373.61 765.26 348.37 711.64 365.36 710.2 368.87 754.74 413.83 753.53 425.16 760.01 428 815.09 411.6 814.07 401.88 818.93 413.83 871.84 411.59 872.2 489.11 887.85 485.04 956.64 518.22 956.64 530.96 979.29 542.04 988.76 536.49 988.76 543.84 1000.52 549.23 1033.35 535.43 1033.35 521.85 1044.95 517.09 1044.95 357.61 969.37 328.35 939.63 344.14 939.63 278.17 934.99 278.64 935.35 242.17"/>
+    </svg>
+
+  </div>
+
+  <!-- WINDOW LAYER — windows spawn here -->
+  <div class="window-layer" id="windowLayer"></div>
+
+  <!-- LOCK CONSOLE — fixed position -->
+  <div id="lock-console">
+    <div id="lock-console-log"></div>
+  </div>
+</div>
+
+<script>
+  // ---- INTRO ----
+  (function() {
+    const overlay = document.getElementById('intro-overlay');
+    const idleVid = document.getElementById('intro-idle');
+    const enterVid = document.getElementById('intro-entering');
+    const introBtn = document.getElementById('intro-btn');
+    const hubVid = document.getElementById('hub-video');
+    let introDone = false;
+
+    function fadeToHub() {
+      if (introDone) return;
+      introDone = true;
+      enterVid.pause();
+      idleVid.pause();
+      overlay.style.transition = 'opacity 0.5s';
+      overlay.style.opacity = '0';
+      hubVid.play();
+      setTimeout(() => { overlay.remove(); }, 500);
+    }
+
+    // Button click → play entering video
+    const introRect = introBtn.querySelector('rect');
+    introRect.addEventListener('click', () => {
+      introBtn.style.display = 'none';
+      idleVid.pause();
+      idleVid.style.display = 'none';
+      enterVid.style.display = '';
+      enterVid.play();
+    });
+
+    // Entering video ends → fade to hub
+    enterVid.addEventListener('ended', fadeToHub);
+
+    // Esc skips straight to hub
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') fadeToHub();
+    });
+  })();
+
+  const scene = document.getElementById('scene');
+  const windowLayer = document.getElementById('windowLayer');
+
+  // ---- CONFIG ----
+  const EDGE_SIZE = 10;
+  const MIN_WIDTH = 150;
+  const MIN_HEIGHT = 100;
+
+  // ---- Z-INDEX MANAGEMENT ----
+  let topZ = 200;
+
+  function bringToFront(win) {
+    topZ++;
+    win.style.zIndex = topZ;
+  }
+
+  // ---- TRACK OPEN WINDOWS ----
+  const openWindows = {};  // keyed by data-name
+
+  // ---- WINDOW FACTORY ----
+  function createWindow(config) {
+    // If already open, just bring to front
+    if (openWindows[config.name]) {
+      bringToFront(openWindows[config.name]);
+      return;
+    }
+
+    const win = document.createElement('div');
+    win.className = 'info-window';
+    win.style.width = config.width + 'px';
+    win.style.height = config.height + 'px';
+
+    // Offset each new window slightly so they don't stack exactly
+    const offset = Object.keys(openWindows).length * 30;
+    const sceneRect = scene.getBoundingClientRect();
+    win.style.left = (sceneRect.width / 2 - config.width / 2 + offset) + 'px';
+    win.style.top = (sceneRect.height / 2 - config.height / 2 + offset) + 'px';
+
+    // Titlebar
+    const titlebar = document.createElement('div');
+    titlebar.className = 'info-window-titlebar';
+    win.appendChild(titlebar);
+
+    // Close button
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'info-window-close';
+    closeBtn.textContent = '[close]';
+    win.appendChild(closeBtn);
+
+    // Content
+    const content = document.createElement('div');
+    content.className = 'info-window-content';
+    win.appendChild(content);
+
+    // Fill content
+    if (config.contentBuilder) {
+      config.contentBuilder(content, config);
+    } else if (config.src) {
+      content.classList.add('has-iframe');
+      const iframe = document.createElement('iframe');
+      iframe.style.width = (config.nativeWidth || 1280) + 'px';
+      iframe.style.height = (config.nativeHeight || 720) + 'px';
+      iframe.src = config.src;
+      iframe.allow = 'autoplay';
+      content.appendChild(iframe);
+    } else {
+      const title = document.createElement('span');
+      title.className = 'info-window-title';
+      title.textContent = config.name;
+      content.appendChild(title);
+    }
+
+    // Store window state
+    const state = {
+      maxWidth: config.maxWidth || Infinity,
+      maxHeight: config.maxHeight || Infinity,
+      nativeWidth: config.nativeWidth || 0,
+      nativeHeight: config.nativeHeight || 0,
+      svg: config.svg
+    };
+
+    // Add to DOM
+    windowLayer.appendChild(win);
+    openWindows[config.name] = win;
+    bringToFront(win);
+
+    // Scale iframe if present
+    if (config.src) {
+      requestAnimationFrame(() => scaleIframe(win, state));
+    }
+
+    // Mark SVG as active
+    if (config.svg) config.svg.classList.add('hotspot-active');
+
+    // ---- CLOSE ----
+    closeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      destroyWindow(config.name);
+    });
+
+    // ---- BRING TO FRONT ON CLICK ----
+    win.addEventListener('mousedown', () => bringToFront(win));
+
+    // ---- DRAG ----
+    let isDragging = false;
+    let dragOX = 0, dragOY = 0;
+
+    titlebar.addEventListener('mousedown', (e) => {
+      if (win._resizeCorner) return;
+      isDragging = true;
+      dragOX = e.clientX - win.getBoundingClientRect().left;
+      dragOY = e.clientY - win.getBoundingClientRect().top;
+      bringToFront(win);
+      e.preventDefault();
+    });
+
+    // ---- RESIZE (corners only, proportional, skip top-left) ----
+    let isResizing = false;
+    win._resizeCorner = null;
+    let rsStartX, rsStartY, rsStartW, rsStartH, rsStartLeft, rsStartTop;
+
+    const cornerCursors = { 'ne': 'ne-resize', 'se': 'se-resize', 'sw': 'sw-resize' };
+
+    function onMouseMove(e) {
+      if (isDragging) {
+        const parentRect = windowLayer.getBoundingClientRect();
+        win.style.left = (e.clientX - dragOX - parentRect.left) + 'px';
+        win.style.top = (e.clientY - dragOY - parentRect.top) + 'px';
+        return;
+      }
+      if (isResizing) {
+        const dx = e.clientX - rsStartX;
+        const dy = e.clientY - rsStartY;
+        let scale = 1;
+        if (win._resizeCorner === 'se') scale = 1 + (dx + dy) / (rsStartW + rsStartH);
+        if (win._resizeCorner === 'ne') scale = 1 + (dx - dy) / (rsStartW + rsStartH);
+        if (win._resizeCorner === 'sw') scale = 1 + (-dx + dy) / (rsStartW + rsStartH);
+
+        let newW = rsStartW * scale;
+        let newH = rsStartH * scale;
+        if (newW < MIN_WIDTH || newH < MIN_HEIGHT) return;
+        if (newW > state.maxWidth || newH > state.maxHeight) return;
+
+        let newLeft = rsStartLeft;
+        let newTop = rsStartTop;
+        if (win._resizeCorner === 'sw') newLeft = rsStartLeft + (rsStartW - newW);
+        if (win._resizeCorner === 'ne') newTop = rsStartTop + (rsStartH - newH);
+
+        win.style.width = newW + 'px';
+        win.style.height = newH + 'px';
+        win.style.left = newLeft + 'px';
+        win.style.top = newTop + 'px';
+        scaleIframe(win, state);
+        scaleTvIframe(win);
+        scaleLockMechanism(win);
+        return;
+      }
+      // Detect corners for cursor
+      const rect = win.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const w = rect.width;
+      const h = rect.height;
+
+      const nearLeft = x >= 0 && x <= EDGE_SIZE;
+      const nearRight = x >= w - EDGE_SIZE && x <= w;
+      const nearTop = y >= 0 && y <= EDGE_SIZE;
+      const nearBottom = y >= h - EDGE_SIZE && y <= h;
+
+      let corner = null;
+      if (nearTop && nearRight) corner = 'ne';
+      else if (nearBottom && nearRight) corner = 'se';
+      else if (nearBottom && nearLeft) corner = 'sw';
+
+      if (corner) {
+        win.style.cursor = cornerCursors[corner];
+        win._resizeCorner = corner;
+      } else {
+        win.style.cursor = '';
+        win._resizeCorner = null;
+      }
+    }
+
+    win.addEventListener('mousedown', (e) => {
+      if (!win._resizeCorner) return;
+      e.preventDefault();
+      e.stopPropagation();
+      isResizing = true;
+      const rect = win.getBoundingClientRect();
+      const parentRect = windowLayer.getBoundingClientRect();
+      rsStartX = e.clientX;
+      rsStartY = e.clientY;
+      rsStartW = rect.width;
+      rsStartH = rect.height;
+      rsStartLeft = rect.left - parentRect.left;
+      rsStartTop = rect.top - parentRect.top;
+      bringToFront(win);
+    });
+
+    function onMouseUp() {
+      isDragging = false;
+      isResizing = false;
+    }
+
+    // Store cleanup references
+    win._onMouseMove = onMouseMove;
+    win._onMouseUp = onMouseUp;
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }
+
+  // ---- IFRAME SCALING ----
+  function scaleIframe(win, state) {
+    const content = win.querySelector('.info-window-content');
+    const iframe = content ? content.querySelector('iframe') : null;
+    if (!iframe || !state.nativeWidth) return;
+    const contentRect = content.getBoundingClientRect();
+    const scale = contentRect.width / state.nativeWidth;
+    iframe.style.transform = 'scale(' + scale + ')';
+    win.style.height = (state.nativeHeight * scale) + 'px';
+  }
+
+  // Scale TV iframe (used by toggleTvScreen and resize)
+  function scaleTvIframe(win) {
+    if (!win._tvNativeWidth) return;
+    const content = win.querySelector('.info-window-content');
+    const iframe = content ? content.querySelector('iframe') : null;
+    if (!iframe) return;
+    const contentRect = content.getBoundingClientRect();
+    const scale = contentRect.width / win._tvNativeWidth;
+    iframe.style.transform = 'scale(' + scale + ')';
+    win.style.height = (win._tvNativeHeight * scale) + 'px';
+  }
+
+  // Scale lock mechanism proportionally with window
+  function scaleLockMechanism(win) {
+    if (!win._lockRefWidth) return;
+    const mech = win.querySelector('.lock-mechanism');
+    if (!mech) return;
+    const scale = win.getBoundingClientRect().width / win._lockRefWidth;
+    mech.style.transform = 'translate(-50%, -50%) scale(' + scale + ')';
+  }
+
+  // ---- DESTROY WINDOW ----
+  function destroyWindow(name) {
+    const win = openWindows[name];
+    if (!win) return;
+    // Remove event listeners
+    document.removeEventListener('mousemove', win._onMouseMove);
+    document.removeEventListener('mouseup', win._onMouseUp);
+    // Remove SVG active state
+    const svg = document.querySelector('.hotspot-layer svg[data-name="' + name + '"]');
+    if (svg) svg.classList.remove('hotspot-active');
+    // Remove from DOM
+    win.remove();
+    delete openWindows[name];
+  }
+
+  // ---- SUB-HUB BUILDERS ----
+
+  // TV Panel sub-hub: image background + two SVG hotspot buttons
+  // TV panel state: 'state1' (box in) or 'state3' (box out, remote visible)
+  let tvPanelState = 'state1';
+
+  function buildTvPanelContent(content) {
+    content.style.padding = '0';
+    const wrap = document.createElement('div');
+    wrap.className = 'sub-hub-wrap';
+    wrap.style.position = 'relative';
+
+    // Helper: create a preloaded video element
+    function makeVideo(src, loop) {
+      const v = document.createElement('video');
+      v.src = src;
+      v.muted = true;
+      v.playsInline = true;
+      v.preload = 'auto';
+      v.loop = loop;
+      v.style.position = 'absolute';
+      v.style.top = '0';
+      v.style.left = '0';
+      v.style.width = '100%';
+      v.style.height = '100%';
+      v.style.objectFit = 'cover';
+      v.style.display = 'none';
+      return v;
+    }
+
+    // Preload all videos
+    const vid1 = makeVideo('tv_panel/tv_panel_state1.mp4', true);
+    const vid2 = makeVideo('tv_panel/tv_panel_state2.mp4', false);
+    const vid3 = makeVideo('tv_panel/tv_panel_state3.mp4', true);
+    const vidTvOn = makeVideo('tv_panel/tv_panel_tv_on.mp4', true);
+    wrap.appendChild(vid1);
+    wrap.appendChild(vid2);
+    wrap.appendChild(vid3);
+    wrap.appendChild(vidTvOn);
+
+    // Show the correct video based on persisted state
+    if (tvPanelState === 'state1') {
+      vid1.style.display = '';
+      vid1.autoplay = true;
+    } else {
+      vid3.style.display = '';
+      vid3.autoplay = true;
+    }
+
+    // Global: toggle tv_panel between state3 and tv_on
+    let tvOnPlaying = false;
+    window._toggleTvPanelTvOn = function() {
+      if (tvPanelState !== 'state3') return;
+      if (!tvOnPlaying) {
+        vid3.pause();
+        vid3.style.display = 'none';
+        vidTvOn.currentTime = 0;
+        vidTvOn.style.display = '';
+        vidTvOn.play();
+        tvOnPlaying = true;
+      } else {
+        vidTvOn.pause();
+        vidTvOn.style.display = 'none';
+        vid3.currentTime = 0;
+        vid3.style.display = '';
+        vid3.play();
+        tvOnPlaying = false;
+      }
+    };
+
+    // Hotspot layer
+    const hl = document.createElement('div');
+    hl.className = 'hotspot-layer';
+
+    // TV hotspot (always present)
+    const tvSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    tvSvg.setAttribute('viewBox', '0 0 768 1056');
+    tvSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    const tvPoly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    tvPoly.setAttribute('points', '596.83 22.93 594.77 230.89 324.02 230.94 324.02 27.99 596.83 22.93');
+    tvSvg.appendChild(tvPoly);
+    hl.appendChild(tvSvg);
+
+    // Second hotspot: box_in (state1) or remote (state3)
+    const secondSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    secondSvg.setAttribute('viewBox', '0 0 768 1056');
+    secondSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    const secondShape = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+
+    if (tvPanelState === 'state1') {
+      secondShape.setAttribute('points', '524.57 483.2 521.09 487.63 486.3 474.35 486.3 511.67 483.46 555.63 480.29 557.84 395.85 569.54 265.87 575.87 224.12 561.32 218.43 503.13 218.43 462.96 226.33 462.96 225.38 450.31 220.01 434.82 133.98 424.06 138.09 397.81 147.27 397.81 336.71 372.51 342.09 368.72 404.39 395.6 479.34 413.63 524.57 483.2');
+    } else {
+      secondShape.setAttribute('points', '424.76 460.19 458.76 475.92 456.64 488.67 418.81 548.18 367.37 548.18 424.76 460.19');
+    }
+    secondSvg.appendChild(secondShape);
+    hl.appendChild(secondSvg);
+
+    wrap.appendChild(hl);
+    content.appendChild(wrap);
+
+    // TV click — open tv video window (video or game depending on tv_on state)
+    tvPoly.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (tvOnPlaying) {
+        // TV is on → open straight into shooting game
+        createWindow({
+          name: 'tv_video',
+          width: 480,
+          height: 360,
+          contentBuilder: buildTvGameContent
+        });
+      } else {
+        // TV is off → open tv_loop video
+        createWindow({
+          name: 'tv_video',
+          width: 480,
+          height: 360,
+          contentBuilder: buildTvVideoContent
+        });
+      }
+    });
+
+    // Second hotspot click
+    secondShape.addEventListener('click', (e) => {
+      e.stopPropagation();
+
+      if (tvPanelState === 'state1') {
+        tvPanelState = 'state3';
+        // Hide box_in SVG after 100ms
+        setTimeout(() => {
+          secondSvg.style.display = 'none';
+        }, 100);
+        // After 100ms: crossfade from vid1 → vid2 (no black gap)
+        setTimeout(() => {
+          vid2.currentTime = 0;
+          vid2.style.display = '';
+          vid2.play();
+          vid1.style.display = 'none';
+          vid1.pause();
+
+          // When state2 ends, seamlessly switch to state3 loop
+          vid2.addEventListener('ended', function onState2End() {
+            vid2.removeEventListener('ended', onState2End);
+            vid3.currentTime = 0;
+            vid3.style.display = '';
+            vid3.play();
+            vid2.style.display = 'none';
+            // Swap hotspot to remote and show it
+            secondShape.setAttribute('points', '424.76 460.19 458.76 475.92 456.64 488.67 418.81 548.18 367.37 548.18 424.76 460.19');
+            secondSvg.style.display = '';
+          });
+        }, 100);
+      } else {
+        // State3: remote click opens remote window
+        createWindow({
+          name: 'tv_remote',
+          width: 108,
+          height: 464,
+          contentBuilder: buildRemoteContent
+        });
+      }
+    });
+  }
+
+  // TV screen state: 'video' or 'game'
+  let tvScreenMode = 'video';
+
+  // TV video window: looping video
+  function buildTvVideoContent(content) {
+    content.style.padding = '0';
+    tvScreenMode = 'video';
+    const wrap = document.createElement('div');
+    wrap.className = 'video-wrap';
+    const video = document.createElement('video');
+    video.src = 'tv_panel/tv_loop.mp4';
+    video.autoplay = true;
+    video.loop = true;
+    video.muted = true;
+    video.playsInline = true;
+    wrap.appendChild(video);
+    content.appendChild(wrap);
+  }
+
+  // TV game window: shooting game iframe directly
+  function buildTvGameContent(content) {
+    content.style.padding = '0';
+    tvScreenMode = 'game';
+    content.classList.add('has-iframe');
+    const iframe = document.createElement('iframe');
+    iframe.style.width = '1024px';
+    iframe.style.height = '768px';
+    iframe.src = 'shooting-game/index.html';
+    iframe.allow = 'autoplay';
+    content.appendChild(iframe);
+    const win = content.closest('.info-window');
+    if (win) {
+      win._tvNativeWidth = 1024;
+      win._tvNativeHeight = 768;
+      requestAnimationFrame(() => scaleTvIframe(win));
+    }
+  }
+
+  // Swap TV screen content between video and game
+  function toggleTvScreen() {
+    const tvWin = openWindows['tv_video'];
+    if (!tvWin) return; // TV window must be open
+
+    const content = tvWin.querySelector('.info-window-content');
+    if (!content) return;
+
+    // Clear current content
+    content.innerHTML = '';
+    content.classList.remove('has-iframe');
+
+    if (tvScreenMode === 'video') {
+      // Switch to game
+      tvScreenMode = 'game';
+      content.classList.add('has-iframe');
+      const iframe = document.createElement('iframe');
+      iframe.style.width = '1024px';
+      iframe.style.height = '768px';
+      iframe.src = 'shooting-game/index.html';
+      iframe.allow = 'autoplay';
+      content.appendChild(iframe);
+      // Store native dims so resize scaling works
+      tvWin._tvNativeWidth = 1024;
+      tvWin._tvNativeHeight = 768;
+      // Scale iframe to fit window
+      requestAnimationFrame(() => scaleTvIframe(tvWin));
+    } else {
+      // Switch back to video
+      tvScreenMode = 'video';
+      const wrap = document.createElement('div');
+      wrap.className = 'video-wrap';
+      const video = document.createElement('video');
+      video.src = 'tv_panel/tv_loop.mp4';
+      video.autoplay = true;
+      video.loop = true;
+      video.muted = true;
+      video.playsInline = true;
+      wrap.appendChild(video);
+      content.appendChild(wrap);
+    }
+  }
+
+  // Remote window: image + button overlay
+  function buildRemoteContent(content) {
+    content.style.padding = '0';
+    const wrap = document.createElement('div');
+    wrap.className = 'sub-hub-wrap';
+
+    // Remote image
+    const img = document.createElement('img');
+    img.src = 'tv_panel/remote tv.png?v=2';
+    wrap.appendChild(img);
+
+    // Button overlay
+    const hl = document.createElement('div');
+    hl.className = 'hotspot-layer';
+    const btnSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    btnSvg.setAttribute('viewBox', '0 0 200 901');
+    btnSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    const ellipse = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+    ellipse.setAttribute('cx', '45.97');
+    ellipse.setAttribute('cy', '98.23');
+    ellipse.setAttribute('rx', '17.14');
+    ellipse.setAttribute('ry', '19.49');
+    btnSvg.appendChild(ellipse);
+    hl.appendChild(btnSvg);
+    wrap.appendChild(hl);
+    content.appendChild(wrap);
+
+    // Button click — toggle TV between video and game + play tv_on in panel
+    ellipse.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleTvScreen();
+      if (window._toggleTvPanelTvOn) window._toggleTvPanelTvOn();
+    });
+  }
+
+  // ---- LOCK SYSTEM STATE ----
+  const lockState = {
+    lock1: { drums: [1, 1, 1], code: [1, 2, 5], unlocked: false },
+    lock2: { sequence: [], code: [1, 2, 3, 4], unlocked: false },
+    lock3: { hasKey: false, unlocked: false }
+  };
+
+  function lockLog(msg) {
+    const wrapper = document.getElementById('lock-console');
+    const con = document.getElementById('lock-console-log');
+    if (!con) return;
+    if (wrapper) wrapper.style.display = 'block';
+    const line = document.createElement('div');
+    line.textContent = '> ' + msg;
+    con.appendChild(line);
+    con.scrollTop = con.scrollHeight;
+  }
+
+  // Back door: looping video + 3 lock SVG hotspots
+  function buildBackDoorContent(content) {
+    content.style.padding = '0';
+    const wrap = document.createElement('div');
+    wrap.className = 'sub-hub-wrap';
+
+    // Looping video
+    const video = document.createElement('video');
+    video.src = 'locks_loop.mp4';
+    video.autoplay = true;
+    video.loop = true;
+    video.muted = true;
+    video.playsInline = true;
+    video.style.width = '100%';
+    video.style.height = '100%';
+    video.style.display = 'block';
+    wrap.appendChild(video);
+
+    // Hotspot layer with 3 lock outlines
+    const hl = document.createElement('div');
+    hl.className = 'hotspot-layer';
+
+    // Lock 1 (polygon)
+    const l1Svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    l1Svg.setAttribute('viewBox', '0 0 640 540');
+    const l1Poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    l1Poly.setAttribute('points', '198.25 239.42 179.94 250.59 162.25 264.66 149.19 281.74 139.14 300.63 132.71 322.14 131.51 341.83 134.32 365.34 142.96 388.45 156.02 408.75 174.65 426.73 149.84 429.79 131.51 417.27 118.98 396.85 102.89 338.74 103.41 335.19 102.11 334.41 96.45 317.29 96.81 309.52 95.03 308.54 89.85 289.98 89.94 284.09 88.78 283.73 82.47 264.52 83.12 253.02 81.57 252.04 60.75 172.79 63.49 159.82 77.73 141.38 104.21 120.92 143.29 115.26 161.37 124.58 175.38 145.51 180.21 162.52 167.08 164.88 167.08 184.88 174.48 193.65 187.36 191.85 194.79 223.1 191.32 229.05 195.59 229.05 198.25 239.42');
+    l1Svg.appendChild(l1Poly);
+    hl.appendChild(l1Svg);
+
+    // Lock 2 (polygon)
+    const l2Svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    l2Svg.setAttribute('viewBox', '0 0 640 540');
+    const l2Poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    l2Poly.setAttribute('points', '440.04 539.99 587.05 471.53 590.91 465.63 495.67 275.83 489.55 272.88 487.28 272.88 368.68 333.88 368.68 346.13 362.79 369.26 354.62 388.98 343.06 405.31 332.63 415.97 391.73 540 440.04 539.99');
+    l2Svg.appendChild(l2Poly);
+    hl.appendChild(l2Svg);
+
+    // Lock 3 (polygon)
+    const l3Svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    l3Svg.setAttribute('viewBox', '0 0 640 540');
+    const l3Poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    l3Poly.setAttribute('points', '368.68 333.88 368.68 311.48 357.79 298.82 341.91 291.19 321.62 288.17 296.09 279.73 280.42 264.06 273.38 248.79 267.16 235.92 258.11 228.69 240.83 226.88 220.73 230.7 200.03 238.34 179.94 250.59 162.25 264.66 149.19 281.74 139.14 300.63 132.71 322.14 131.51 341.83 134.32 365.34 142.96 388.45 156.02 408.75 173.31 425.43 194.01 438.69 214.5 445.52 235 449.74 260.32 449.74 284.64 444.72 304.33 436.68 324.23 424.02 332.63 415.97 343.06 405.31 354.62 388.98 362.79 369.26 368.68 346.13 368.68 333.88');
+    l3Svg.appendChild(l3Poly);
+    hl.appendChild(l3Svg);
+
+    wrap.appendChild(hl);
+    content.appendChild(wrap);
+
+    // Click handlers — open lock interfaces
+    l1Poly.addEventListener('click', (e) => {
+      e.stopPropagation();
+      createWindow({ name: 'lock1', width: 200, height: 200, contentBuilder: buildLock1Content });
+      if (openWindows['lock1']) openWindows['lock1']._lockRefWidth = 200;
+    });
+    l2Poly.addEventListener('click', (e) => {
+      e.stopPropagation();
+      createWindow({ name: 'lock2', width: 160, height: 290, contentBuilder: buildLock2Content });
+      if (openWindows['lock2']) openWindows['lock2']._lockRefWidth = 160;
+    });
+    l3Poly.addEventListener('click', (e) => {
+      e.stopPropagation();
+      createWindow({ name: 'lock3', width: 160, height: 260, contentBuilder: buildLock3Content });
+      if (openWindows['lock3']) openWindows['lock3']._lockRefWidth = 160;
+    });
+  }
+
+  // Lock SVG markup — locked and unlocked variants
+  const lockSVGs = {
+    code: {
+      viewBox: '0 0 527.34 526.99',
+      locked: '<path d="M423.67,339.55h-45.11v-99.36c0-63.87-51.78-115.65-115.65-115.65h0c-63.87,0-115.65,51.78-115.65,115.65v99.52l-43.59-.31v-100.44c0-88.37,71.63-160,160-160h0c88.37,0,160,71.63,160,160v100.59"/><polygon points="372.78 263.49 154.41 263.49 0 340.67 0 449.81 154.41 526.99 372.78 526.99 527.19 449.81 527.19 340.67 372.78 263.49"/>',
+      unlocked: '<path d="M423.67,328.85h-45.11v-167.62c0-63.87-51.78-115.65-115.65-115.65h0c-63.87,0-115.65,51.78-115.65,115.65v37.44l-43.59-.31v-38.35c0-88.38,71.64-160.01,160-160.01h0c88.37,0,160,71.63,160,160v168.85"/><polygon points="372.78 263.49 154.41 263.49 0 340.67 0 449.81 154.41 526.99 372.78 526.99 527.19 449.81 527.19 340.67 372.78 263.49"/>'
+    },
+    grid: {
+      viewBox: '0 0 426.38 769.89',
+      locked: '<polygon points="426.38 727.46 426.38 359.59 394.12 317.16 23.64 317.16 0 359.59 0 727.46 23.64 769.89 394.12 769.89 426.38 727.46"/><path d="M369.61,381.86h-45.11v-99.36c0-63.87-51.78-115.65-115.65-115.65h0c-63.87,0-115.65,51.78-115.65,115.65v99.52l-43.59-.31v-100.44c0-88.37,71.63-160,160-160h0c88.37,0,160,71.63,160,160v100.59"/>',
+      unlocked: '<path d="M371.03,328.85h-45.11v-167.62c0-63.87-51.78-115.65-115.65-115.65h0c-63.87,0-115.65,51.78-115.65,115.65v37.44l-43.59-.31v-38.35c0-88.38,71.64-160.01,160-160.01h0c88.37,0,160,71.63,160,160v168.85"/><polygon points="426.38 727.46 426.38 359.59 394.12 317.16 23.64 317.16 0 359.59 0 727.46 23.64 769.89 394.12 769.89 426.38 727.46"/>'
+    },
+    key: {
+      viewBox: '0 0 394.62 643.32',
+      locked: '<path d="M357.31,360.13h-45.11v-99.36c0-63.87-51.78-115.65-115.65-115.65h0c-63.87,0-115.65,51.78-115.65,115.65v99.52l-43.59-.31v-100.44c0-88.37,71.63-160,160-160h0c88.37,0,160,71.63,160,160v100.59"/><circle cx="197.31" cy="446.01" r="197.31"/>',
+      unlocked: '<path d="M348.29,328.85h-45.11v-167.62c0-63.87-51.78-115.65-115.65-115.65h0c-63.87,0-115.65,51.78-115.65,115.65v37.44l-43.59-.31v-38.35c0-88.38,71.63-160.01,160-160.01h0c88.37,0,160,71.63,160,160v168.85"/><circle cx="197.31" cy="414.57" r="197.31"/>'
+    }
+  };
+
+  /* ---- CONFIGURABLE: mechanism position per lock (% from top-left of window) ---- */
+  const lockLayout = {
+    code: { top: '74%', left: '50%' },   /* drums centered on lock body */
+    grid: { top: '70%', left: '50%' },   /* grid centered on lock body */
+    key:  { top: '68%', left: '50%' }    /* keyhole centered on circle */
+  };
+
+  function buildLockSVG(id, type, unlocked) {
+    const data = lockSVGs[type];
+    const str = '<svg id="' + id + '" class="lock-svg" viewBox="' + data.viewBox +
+      '" xmlns="http://www.w3.org/2000/svg">' + (unlocked ? data.unlocked : data.locked) + '</svg>';
+    return new DOMParser().parseFromString(str, 'image/svg+xml').documentElement;
+  }
+
+  function swapLockSVG(id, type) {
+    const old = document.getElementById(id);
+    if (!old) return;
+    const wrap = old.closest('.lock-wrap');
+    const nw = buildLockSVG(id, type, true);
+    // Read unlock color from CSS config
+    const uc = getComputedStyle(document.documentElement).getPropertyValue('--lock-unlocked-color').trim();
+    nw.querySelectorAll('path, polygon, circle').forEach(el => {
+      el.style.stroke = uc;
+    });
+    old.parentNode.replaceChild(nw, old);
+    // Also turn mechanism controls to unlock color
+    if (wrap) {
+      wrap.querySelectorAll('.drum-left, .drum-right, .drum-val').forEach(el => {
+        el.style.borderColor = uc;
+        el.style.color = uc;
+      });
+      wrap.querySelectorAll('.grid-btn').forEach(el => {
+        el.style.borderColor = uc;
+        el.style.color = uc;
+      });
+      wrap.querySelectorAll('.keyhole-svg circle, .keyhole-svg polygon').forEach(el => {
+        el.setAttribute('stroke', uc);
+      });
+    }
+  }
+
+  // ---- LOCK 1: Drum lock (code 125) ----
+  function buildLock1Content(content) {
+    content.style.padding = '0';
+    const st = lockState.lock1;
+    const wrap = document.createElement('div');
+    wrap.className = 'lock-wrap';
+
+    // SVG base
+    wrap.appendChild(buildLockSVG('lock1-svg', 'code', st.unlocked));
+
+    // Mechanism overlay
+    const mech = document.createElement('div');
+    mech.className = 'lock-mechanism';
+    mech.style.top = lockLayout.code.top;
+    mech.style.left = lockLayout.code.left;
+    mech.style.transform = 'translate(-50%, -50%)';
+
+    const stack = document.createElement('div');
+    stack.className = 'drum-stack';
+    for (let i = 0; i < 3; i++) {
+      const drum = document.createElement('div');
+      drum.className = 'drum';
+      drum.dataset.idx = i;
+      drum.innerHTML = '<button class="drum-left">&lt;</button><div class="drum-val">' + st.drums[i] + '</div><button class="drum-right">&gt;</button>';
+      stack.appendChild(drum);
+    }
+    mech.appendChild(stack);
+    wrap.appendChild(mech);
+    content.appendChild(wrap);
+
+    wrap.querySelectorAll('.drum').forEach(drum => {
+      const idx = parseInt(drum.dataset.idx);
+      const valEl = drum.querySelector('.drum-val');
+      drum.querySelector('.drum-left').addEventListener('click', () => {
+        if (st.unlocked) return;
+        st.drums[idx] = st.drums[idx] <= 1 ? 9 : st.drums[idx] - 1;
+        valEl.textContent = st.drums[idx];
+        lockLog('Lock I drum ' + (idx+1) + ' → ' + st.drums[idx]);
+        checkLock1();
+      });
+      drum.querySelector('.drum-right').addEventListener('click', () => {
+        if (st.unlocked) return;
+        st.drums[idx] = st.drums[idx] >= 9 ? 1 : st.drums[idx] + 1;
+        valEl.textContent = st.drums[idx];
+        lockLog('Lock I drum ' + (idx+1) + ' → ' + st.drums[idx]);
+        checkLock1();
+      });
+    });
+
+    function checkLock1() {
+      if (st.drums[0] === st.code[0] && st.drums[1] === st.code[1] && st.drums[2] === st.code[2]) {
+        st.unlocked = true;
+        swapLockSVG('lock1-svg', 'code');
+        lockLog('Lock I UNLOCKED');
+      }
+    }
+  }
+
+  // ---- LOCK 2: 3x3 grid code (sequence-based) ----
+  function buildLock2Content(content) {
+    content.style.padding = '0';
+    const st = lockState.lock2;
+    const wrap = document.createElement('div');
+    wrap.className = 'lock-wrap';
+
+    // SVG base
+    wrap.appendChild(buildLockSVG('lock2-svg', 'grid', st.unlocked));
+
+    // Mechanism overlay
+    const mech = document.createElement('div');
+    mech.className = 'lock-mechanism';
+    mech.style.top = lockLayout.grid.top;
+    mech.style.left = lockLayout.grid.left;
+    mech.style.transform = 'translate(-50%, -50%)';
+
+    const grid = document.createElement('div');
+    grid.className = 'grid-3x3';
+    const btns = [];
+    for (let i = 0; i < 9; i++) {
+      const btn = document.createElement('button');
+      btn.className = 'grid-btn';
+      btn.dataset.idx = i;
+      grid.appendChild(btn);
+      btns.push(btn);
+    }
+    mech.appendChild(grid);
+    wrap.appendChild(mech);
+    content.appendChild(wrap);
+
+    function resetGrid() {
+      st.sequence = [];
+      btns.forEach(b => { b.textContent = ''; b.classList.remove('grid-on'); });
+    }
+
+    btns.forEach(btn => {
+      const idx = parseInt(btn.dataset.idx);
+      const cellNum = idx + 1;
+      btn.addEventListener('click', () => {
+        if (st.unlocked) return;
+        if (btn.classList.contains('grid-on')) return;
+
+        st.sequence.push(cellNum);
+        btn.textContent = 'x';
+        btn.classList.add('grid-on');
+        lockLog('Lock II cell ' + cellNum);
+
+        if (st.sequence.length >= 4) {
+          const match = st.code.length === st.sequence.length && st.code.every(v => st.sequence.includes(v));
+          if (match) {
+            st.unlocked = true;
+            swapLockSVG('lock2-svg', 'grid');
+            lockLog('Lock II UNLOCKED');
+          } else {
+            lockLog('Lock II wrong code — reset');
+            setTimeout(resetGrid, 400);
+          }
+        }
+      });
+    });
+  }
+
+  // ---- LOCK 3: Key lock ----
+  function buildLock3Content(content) {
+    content.style.padding = '0';
+    const st = lockState.lock3;
+    const wrap = document.createElement('div');
+    wrap.className = 'lock-wrap';
+
+    // SVG base
+    wrap.appendChild(buildLockSVG('lock3-svg', 'key', st.unlocked));
+
+    // Mechanism overlay — keyhole click area
+    const mech = document.createElement('div');
+    mech.className = 'lock-mechanism';
+    mech.style.top = lockLayout.key.top;
+    mech.style.left = lockLayout.key.left;
+    mech.style.transform = 'translate(-50%, -50%)';
+
+    const keySvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    keySvg.setAttribute('viewBox', '0 0 100 100');
+    keySvg.classList.add('keyhole-svg');
+    keySvg.setAttribute('width', '100');
+    keySvg.setAttribute('height', '100');
+    keySvg.innerHTML = '<circle cx="50" cy="40" r="12" fill="none" stroke="rgba(0,0,255,0.5)" stroke-width="1.5"/>' +
+      '<polygon points="42,48 58,48 54,72 46,72" fill="none" stroke="rgba(0,0,255,0.5)" stroke-width="1.5"/>';
+    mech.appendChild(keySvg);
+    wrap.appendChild(mech);
+    content.appendChild(wrap);
+
+    keySvg.addEventListener('click', () => {
+      if (st.unlocked) return;
+      if (!st.hasKey) {
+        lockLog('Lock III — key required');
+        return;
+      }
+      st.unlocked = true;
+      swapLockSVG('lock3-svg', 'key');
+      lockLog('Lock III UNLOCKED');
+    });
+  }
+
+
+  // Back panel: plays video once, shows notebook SVG on last frame
+  function buildBackPanelContent(content) {
+    content.style.padding = '0';
+    const wrap = document.createElement('div');
+    wrap.className = 'sub-hub-wrap';
+
+    // Video — plays once, stops on last frame
+    const video = document.createElement('video');
+    video.src = 'back_panel10s.mp4';
+    video.autoplay = true;
+    video.muted = true;
+    video.playsInline = true;
+    video.loop = false;
+    video.style.width = '100%';
+    video.style.height = '100%';
+    video.style.display = 'block';
+    wrap.appendChild(video);
+
+    // Hotspot layer — hidden initially
+    const hl = document.createElement('div');
+    hl.className = 'hotspot-layer';
+    hl.style.opacity = '0';
+    hl.style.transition = 'opacity 0.3s';
+
+    const nbSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    nbSvg.setAttribute('viewBox', '0 0 1280 720');
+    nbSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    const nbPoly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    nbPoly.setAttribute('points', '208.84 103.98 215.27 103.98 268.25 106.81 300.91 108.09 301.94 110.66 301.94 202.99 207.04 206.08 208.84 103.98');
+    nbSvg.appendChild(nbPoly);
+    hl.appendChild(nbSvg);
+    wrap.appendChild(hl);
+    content.appendChild(wrap);
+
+    // Show notebook SVG after 10.2 seconds
+    setTimeout(() => {
+      hl.style.opacity = '1';
+    }, 10200);
+
+    // Also show on video end as fallback
+    video.addEventListener('ended', () => {
+      hl.style.opacity = '1';
+    });
+
+    // Notebook click — pages cascade + key on first page
+    let notebookBusy = false;
+    nbPoly.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (notebookBusy) return;
+      notebookBusy = true;
+
+      // Build page list — first page depends on whether key has been picked up
+      const pageCount = 27;
+      var pages = [];
+      var firstPage = lockState.lock3.hasKey
+        ? 'notebook_dither/notebook01.png'
+        : 'notebook_dither/notebook01_key.png';
+      pages.push(firstPage);
+      for (var p = 2; p <= pageCount; p++) {
+        var num = p < 10 ? '0' + p : '' + p;
+        pages.push('notebook_dither/notebook' + num + '.png');
+      }
+
+      const popups = [];
+      const sceneRect = scene.getBoundingClientRect();
+      const popupW = 420;
+      const popupH = Math.round(popupW * (534 / 720));
+
+      function spawnPopup(i) {
+        if (i >= pages.length) return;
+
+        const pop = document.createElement('div');
+        pop.className = 'info-window error-popup';
+        pop.style.width = popupW + 'px';
+        pop.style.height = popupH + 'px';
+
+        // Semi-random position within scene bounds
+        const maxX = sceneRect.width - popupW - 20;
+        const maxY = sceneRect.height - popupH - 20;
+        const cx = sceneRect.width / 2 - popupW / 2;
+        const cy = sceneRect.height / 2 - popupH / 2;
+        const spread = Math.min(i * 10, Math.min(maxX, maxY) / 2);
+        const angle = (i * 137.5) * Math.PI / 180;
+        const px = Math.max(10, Math.min(maxX, cx + Math.cos(angle) * spread));
+        const py = Math.max(10, Math.min(maxY, cy + Math.sin(angle) * spread));
+        pop.style.left = px + 'px';
+        pop.style.top = py + 'px';
+
+        // Titlebar
+        const titlebar = document.createElement('div');
+        titlebar.className = 'info-window-titlebar';
+        pop.appendChild(titlebar);
+
+        // Close button
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'info-window-close';
+        closeBtn.textContent = '[close]';
+        pop.appendChild(closeBtn);
+
+        // Page image content
+        const body = document.createElement('div');
+        body.className = 'info-window-content';
+        body.style.padding = '0';
+        body.style.position = 'relative';
+        const img = document.createElement('img');
+        img.src = pages[i];
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.style.objectFit = 'cover';
+        img.style.display = 'block';
+        body.appendChild(img);
+
+        // Key page (index 0): overlay notebook_key.svg if key not yet picked up
+        if (i === 0 && !lockState.lock3.hasKey) {
+          const keyHL = document.createElement('div');
+          keyHL.className = 'hotspot-layer';
+          const keySvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          keySvg.setAttribute('viewBox', '0 0 720 534');
+          keySvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+          const keyPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          keyPath.setAttribute('d', 'M604.95,233.18l-4.32-7.35-4.75-6.7-7.83-5.79-8.38-2.64h-11.02l-12.53,3.24-9.94,6.48-6.91,9.07-2.59,12.31,1.08,13.61,6.7,13.39,7.78,9.29.65,3.89-11.02,40.83-7.56,1.3-2.59,4.54h-4.32l-2.38,4.75h-3.02v3.67l3.46,2.59,3.24,4.1,1.08,4.1,3.89,4.54,2.16,1.94,18.36,3.67,18.15-71.94,2.81-3.67,7.35-1.3,7.99-3.67,8.86-7.56,4.1-6.91,3.24-8.43v-10.8l-1.73-10.59ZM585.29,244.63l-11.88-1.3-13.39-4.97-9.72-7.78,4.32-3.67,5.62-4.32,9.07-1.94h8.64l8.81,4.14,5.66,5.37,3.67,5.83.86,6.91-11.67,1.73Z');
+          keySvg.appendChild(keyPath);
+          keyHL.appendChild(keySvg);
+          body.appendChild(keyHL);
+
+          // Key SVG click — pick up the key
+          keyPath.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            lockState.lock3.hasKey = true;
+            lockLog('picked up the key');
+            // Swap image to notebook01.png (without key)
+            img.src = 'notebook_dither/notebook01.png';
+            // Remove key overlay
+            keyHL.remove();
+          });
+        }
+
+        pop.appendChild(body);
+
+        windowLayer.appendChild(pop);
+        topZ++;
+        pop.style.zIndex = topZ;
+        popups.push(pop);
+
+        // Drag via titlebar
+        let dragging = false, dox = 0, doy = 0;
+        titlebar.addEventListener('mousedown', (me) => {
+          dragging = true;
+          dox = me.clientX - pop.getBoundingClientRect().left;
+          doy = me.clientY - pop.getBoundingClientRect().top;
+          topZ++;
+          pop.style.zIndex = topZ;
+          me.preventDefault();
+        });
+        document.addEventListener('mousemove', (me) => {
+          if (!dragging) return;
+          const pr = windowLayer.getBoundingClientRect();
+          pop.style.left = (me.clientX - dox - pr.left) + 'px';
+          pop.style.top = (me.clientY - doy - pr.top) + 'px';
+        });
+        document.addEventListener('mouseup', () => { dragging = false; });
+
+        // Close button — auto-close all above the first page, then close first page
+        closeBtn.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+
+          if (popups.length === 1) {
+            // Last remaining page — close it
+            pop.remove();
+            popups.pop();
+            notebookBusy = false;
+            return;
+          }
+
+          // Auto-close all popups in reverse, except the first one
+          let delay = 0;
+          while (popups.length > 1) {
+            const p = popups.pop();
+            ((el, d) => {
+              setTimeout(() => { el.remove(); }, d);
+            })(p, delay);
+            delay += 60;
+          }
+        });
+
+        // Spawn next after delay
+        setTimeout(() => spawnPopup(i + 1), 80);
+      }
+
+      // Start the chaos
+      spawnPopup(0);
+    });
+  }
+
+  // ---- HOTSPOT CLICKS ----
+  document.querySelectorAll('.hotspot-layer svg').forEach(svg => {
+    svg.querySelectorAll('polygon').forEach(poly => {
+      poly.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const name = svg.getAttribute('data-name');
+
+        // Special handling for tv_panel — opens sub-hub
+        if (name === 'tv_panel') {
+          createWindow({
+            name: 'tv_panel',
+            width: 384,
+            height: 528,
+            svg: svg,
+            contentBuilder: buildTvPanelContent
+          });
+          return;
+        }
+
+        // Special handling for back_door — lock video sub-hub
+        if (name === 'back_door') {
+          createWindow({
+            name: 'back_door',
+            width: 480,
+            height: 405,
+            svg: svg,
+            contentBuilder: buildBackDoorContent
+          });
+          return;
+        }
+
+        // Special handling for back_panel
+        if (name === 'back_panel') {
+          createWindow({
+            name: 'back_panel',
+            width: 640,
+            height: 360,
+            svg: svg,
+            contentBuilder: buildBackPanelContent
+          });
+          return;
+        }
+
+        createWindow({
+          name: name,
+          width: parseInt(svg.getAttribute('data-width')) || 600,
+          height: parseInt(svg.getAttribute('data-height')) || 400,
+          maxWidth: parseInt(svg.getAttribute('data-max-width')) || Infinity,
+          maxHeight: parseInt(svg.getAttribute('data-max-height')) || Infinity,
+          src: svg.getAttribute('data-src'),
+          nativeWidth: parseInt(svg.getAttribute('data-native-width')) || 1280,
+          nativeHeight: parseInt(svg.getAttribute('data-native-height')) || 720,
+          svg: svg
+        });
+      });
+    });
+  });
+
+  // ---- ESCAPE closes topmost window ----
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      let topName = null;
+      let topZval = 0;
+      for (const [name, win] of Object.entries(openWindows)) {
+        const z = parseInt(win.style.zIndex) || 0;
+        if (z > topZval) { topZval = z; topName = name; }
+      }
+      if (topName) destroyWindow(topName);
+    }
+  });
+</script>
+
+</body>
+</html>
